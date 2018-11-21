@@ -284,8 +284,8 @@ final class Cache_Enabler_Disk {
         // create webp supported files
         if ($options['webp']) {
             // magic regex rule
-            $regex_rule = '#(?<=(?:(ref|src|set)=[\"\']))(?:http[s]?[^\"\']+)(\.png|\.jp[e]?g)(?:[^\"\']+)?(?=[\"\')])#';
-
+            //Add support to background-image: url(... <--should be inline css in html file with complete url of image
+            $regex_rule = '#(?<=(?:(ref|src|set|url)(=|\()[\"\']))(?:http[s]?[^\"\']+)(\.png|\.jp[e]?g)(?:[^\"\']+)?(?=[\"\')])#';
             // call the webp converter callback
             $converted_data = preg_replace_callback($regex_rule,'self::_convert_webp',$data);
 
@@ -643,6 +643,8 @@ final class Cache_Enabler_Disk {
             return self::_convert_webp_src($asset[0]);
         } elseif ($asset[1] == 'set') {
             return self::_convert_webp_srcset($asset[0]);
+        } elseif ($asset[1] == 'url') {
+        return self::_convert_webp_src($asset[0]);
         }
 
         return $asset[0];
@@ -703,7 +705,7 @@ final class Cache_Enabler_Disk {
      */
 
     private static function _convert_webp_srcset($srcset) {
-
+        $srcset = preg_replace('/(\s\s+|\t|\n)/', ' ', $srcset);
         $sizes = explode(', ', $srcset);
         $upload_dir = wp_upload_dir();
         $src_url = parse_url($upload_dir['baseurl']);
