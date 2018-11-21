@@ -703,7 +703,7 @@ final class Cache_Enabler_Disk {
      */
 
     private static function _convert_webp_srcset($srcset) {
-
+        $srcset = preg_replace('/(\s\s+|\t|\n)/', ' ', $srcset);
         $sizes = explode(', ', $srcset);
         $upload_dir = wp_upload_dir();
         $src_url = parse_url($upload_dir['baseurl']);
