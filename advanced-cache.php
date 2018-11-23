@@ -11,8 +11,10 @@ $path = _ce_file_path();
 // path to cached variants
 $path_html = $path . 'index.html';
 $path_gzip = $path . 'index.html.gz';
+$path_br = $path . 'index.html.br';
 $path_webp_html = $path . 'index-webp.html';
 $path_webp_gzip = $path . 'index-webp.html.gz';
+$path_webp_br = $path . 'index-webp.html.br';
 
 
 // if we don't have a cache copy, we do not need to proceed
@@ -123,9 +125,13 @@ if ( $http_if_modified_since && ( strtotime( $http_if_modified_since ) >= filemt
 
 header( 'Last-Modified: ' . gmdate("D, d M Y H:i:s",filemtime( $path_html )).' GMT' );
 
-// check webp and deliver gzip webp file if support
+// check webp and deliver br or gzip webp file if support
 if ( $http_accept && ( strpos($http_accept, 'webp') !== false ) ) {
-    if ( is_readable( $path_webp_gzip ) ) {
+    if ( $http_accept_encoding && ( strpos($http_accept_encoding, 'br') !== false ) && is_readable( $path_webp_br ) ) {
+        header('Content-Encoding: br');
+        readfile( $path_webp_br );
+        exit;
+    } elseif ( is_readable( $path_webp_gzip ) ) {
         header('Content-Encoding: gzip');
         readfile( $path_webp_gzip );
         exit;
@@ -133,6 +139,13 @@ if ( $http_accept && ( strpos($http_accept, 'webp') !== false ) ) {
         readfile( $path_webp_html );
         exit;
     }
+}
+
+// check encoding and deliver br file if support
+if ( $http_accept_encoding && ( strpos($http_accept_encoding, 'br') !== false ) && is_readable( $path_br )  ) {
+    header('Content-Encoding: br');
+    readfile( $path_br );
+    exit;
 }
 
 // check encoding and deliver gzip file if support
