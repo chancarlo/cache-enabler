@@ -25,8 +25,10 @@ final class Cache_Enabler_Disk {
 
     const FILE_HTML = 'index.html';
     const FILE_GZIP = 'index.html.gz';
+    const FILE_BR = 'index.html.br';
     const FILE_WEBP_HTML = 'index-webp.html';
     const FILE_WEBP_GZIP = 'index-webp.html.gz';
+    const FILE_WEBP_BR = 'index-webp.html.br';
 
 
     /**
@@ -170,8 +172,10 @@ final class Cache_Enabler_Disk {
 
         @unlink($path.self::FILE_HTML);
         @unlink($path.self::FILE_GZIP);
+        @unlink($path.self::FILE_BR);
         @unlink($path.self::FILE_WEBP_HTML);
         @unlink($path.self::FILE_WEBP_GZIP);
+        @unlink($path.self::FILE_WEBP_BR);
     }
 
 
@@ -205,9 +209,13 @@ final class Cache_Enabler_Disk {
             exit;
         }
 
-        // check webp and deliver gzip webp file if support
+        // check webp and deliver br or gzip webp file if support
         if ( $http_accept && ( strpos($http_accept, 'webp') !== false ) ) {
-            if ( is_readable( self::_file_webp_gzip() ) ) {
+            if ( $http_accept_encoding && ( strpos($http_accept_encoding, 'br') !== false ) && is_readable( self::_file_webp_br() ) ) {
+                header('Content-Encoding: br');
+                readfile( self::_file_webp_br() );
+                exit;
+            } elseif ( is_readable( self::_file_webp_gzip() ) ) {
                 header('Content-Encoding: gzip');
                 readfile( self::_file_webp_gzip() );
                 exit;
@@ -217,6 +225,13 @@ final class Cache_Enabler_Disk {
             }
         }
 
+        // check encoding and deliver br file if support
+        if ( $http_accept_encoding && ( strpos($http_accept_encoding, 'br') !== false ) && is_readable( self::_file_br() )  ) {
+            header('Content-Encoding: br');
+            readfile( self::_file_br() );
+            exit;
+        }
+        
         // check encoding and deliver gzip file if support
         if ( $http_accept_encoding && ( strpos($http_accept_encoding, 'gzip') !== false ) && is_readable( self::_file_gzip() )  ) {
             header('Content-Encoding: gzip');
@@ -279,13 +294,18 @@ final class Cache_Enabler_Disk {
         // create pre-compressed file
         if ($options['compress']) {
             self::_create_file( self::_file_gzip(), gzencode($data.$cache_signature." (html gzip) -->", 9) );
+            if ( function_exists( 'brotli_compress' ) ) {
+                self::_create_file( self::_file_br(), brotli_compress($data.$cache_signature." (html br) -->", 11) );
+            }
         }
 
         // create webp supported files
         if ($options['webp']) {
             // magic regex rule
-            //Add support to background-image: url(... <--should be inline css in html file with complete url of image
+            //Add support to converting to webp on background-image: url(... 
+            //Declaration should be inline css in html file with complete url of image located within wp-content/uploads
             $regex_rule = '#(?<=(?:(ref|src|set|url)(=|\()[\"\']))(?:http[s]?[^\"\']+)(\.png|\.jp[e]?g)(?:[^\"\']+)?(?=[\"\')])#';
+            
             // call the webp converter callback
             $converted_data = preg_replace_callback($regex_rule,'self::_convert_webp',$data);
 
@@ -294,6 +314,8 @@ final class Cache_Enabler_Disk {
             // create pre-compressed file
             if ($options['compress']) {
                 self::_create_file( self::_file_webp_gzip(), gzencode($converted_data.$cache_signature." (webp gzip) -->", 9) );
+                if ( function_exists( 'brotli_compress' ) ) {
+                    self::_create_file( self::_file_webp_br(), brotli_compress($converted_data.$cache_signature." (webp br) -->", 11) );
             }
         }
 
@@ -486,7 +508,19 @@ final class Cache_Enabler_Disk {
         return self::_file_path(). self::FILE_GZIP;
     }
 
+    /**
+     * get br file path
+     *
+     * @since   1.x.x
+     * @change  1.x.x
+     *
+     * @return  string  path to the brotli html file
+     */
 
+    private static function _file_br() {
+        return self::_file_path(). self::FILE_BR;
+    }
+        
     /**
      * get webp file path
      *
@@ -514,7 +548,19 @@ final class Cache_Enabler_Disk {
         return self::_file_path(). self::FILE_WEBP_GZIP;
     }
 
+    /**
+     * get br webp file path
+     *
+     * @since   1.x.x
+     * @change  1.x.x
+     *
+     * @return  string  path to the webp brotli html file
+     */
 
+    private static function _file_webp_br() {
+        return self::_file_path(). self::FILE_WEBP_BR;
+    }
+        
     /**
      * read settings file
      *
